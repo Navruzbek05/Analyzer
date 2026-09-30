@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Анализатор структуры проекта - простой вариант
+Анализатор структуры проекта
 """
 
 import os
@@ -8,14 +8,56 @@ import sys
 from typing import Dict, List, Optional
 import time
 
+try:
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.prompt import Prompt
+    from rich.table import Table
+    from rich.text import Text
+    from rich.tree import Tree
+except ImportError:
+    print("Не найдена библиотека rich. Установите: pip install rich")
+    sys.exit(1)
+
+console = Console()
+
+# Иконка и цвет по расширению файла
+ICONS = {
+    '.py': ('🐍', 'yellow'),
+    '.js': ('📜', 'bright_yellow'), '.ts': ('📜', 'bright_blue'),
+    '.jsx': ('⚛', 'cyan'), '.tsx': ('⚛', 'cyan'),
+    '.html': ('🌐', 'bright_red'), '.css': ('🎨', 'magenta'), '.scss': ('🎨', 'magenta'),
+    '.md': ('📝', 'bright_white'), '.txt': ('📝', 'white'),
+    '.json': ('⚙', 'green'), '.yaml': ('⚙', 'green'), '.yml': ('⚙', 'green'),
+    '.toml': ('⚙', 'green'), '.ini': ('⚙', 'green'), '.env': ('⚙', 'green'),
+    '.png': ('🖼', 'bright_magenta'), '.jpg': ('🖼', 'bright_magenta'),
+    '.jpeg': ('🖼', 'bright_magenta'), '.gif': ('🖼', 'bright_magenta'),
+    '.svg': ('🖼', 'bright_magenta'), '.ico': ('🖼', 'bright_magenta'),
+    '.zip': ('📦', 'red'), '.rar': ('📦', 'red'), '.7z': ('📦', 'red'), '.tar': ('📦', 'red'), '.gz': ('📦', 'red'),
+    '.exe': ('⚡', 'bright_green'), '.bat': ('⚡', 'bright_green'), '.ps1': ('⚡', 'bright_green'), '.sh': ('⚡', 'bright_green'),
+}
+DEFAULT_ICON = ('📄', 'white')
+
+
+def fmt_size(size: int) -> str:
+    """Переводит байты в читаемый вид"""
+    if size >= 1024 ** 3:
+        return f"{size / 1024 ** 3:.2f} GB"
+    if size >= 1024 ** 2:
+        return f"{size / 1024 ** 2:.2f} MB"
+    if size >= 1024:
+        return f"{size / 1024:.1f} KB"
+    return f"{size} Б"
+
+
 class ProjectAnalyzer:
     def __init__(self):
         self.exclude_dirs = [
-            '.git', '__pycache__', '.venv', 'venv', 
-            'node_modules', '.idea', '.vscode', 'build', 
+            '.git', '__pycache__', '.venv', 'venv',
+            'node_modules', '.idea', '.vscode', 'build',
             'dist', '.pytest_cache', '.coverage', '.mypy_cache'
         ]
-        
+
         self.exclude_files = [
             '.gitignore', '.gitattributes', '.DS_Store',
             'Thumbs.db', 'desktop.ini'
@@ -23,57 +65,54 @@ class ProjectAnalyzer:
 
     def get_path(self) -> Optional[str]:
         """Получаем путь от пользователя"""
-        print("\n" + "="*60)
-        print("АНАЛИЗАТОР СТРУКТУРЫ ПРОЕКТА")
-        print("="*60)
-        print("\nВведите путь к проекту:")
-        print("Пример: C:\\Users\\Name\\Projects\\myapp")
-        print("Или: . (текущая папка), .. (папка выше), exit (выход)")
-        print("-"*60)
-        
+        console.print(
+            "[dim]Пример:[/] C:\\Users\\Name\\Projects\\myapp   "
+            "[dim]или[/] [cyan].[/] [dim](текущая папка),[/] [cyan]..[/] [dim](папка выше),[/] [cyan]exit[/] [dim](выход)[/]"
+        )
+
         while True:
             try:
-                path_input = input("\nВведите путь: ").strip()
-                
+                path_input = Prompt.ask("\n[bold cyan]Путь к проекту[/]").strip()
+
                 if not path_input:
-                    print("Путь не может быть пустым!")
+                    console.print("[red]Путь не может быть пустым![/]")
                     continue
-                
+
                 if path_input.lower() in ['exit', 'quit', 'выход']:
                     return None
-                
+
                 # Убираем кавычки
                 path_input = path_input.strip('"\'')
-                
+
                 # Заменяем слеши для Windows
                 path_input = path_input.replace('/', '\\')
-                
+
                 # Обработка текущей директории
                 if path_input == '.':
                     path_input = os.getcwd()
                 elif path_input == '..':
                     path_input = os.path.dirname(os.getcwd())
-                
+
                 # Обработка тильды
                 if path_input.startswith('~'):
                     path_input = os.path.expanduser(path_input)
-                
+
                 # Расширение переменных окружения
                 if '%' in path_input:
                     path_input = os.path.expandvars(path_input)
-                
+
                 # Проверяем существование пути
                 if not os.path.exists(path_input):
-                    print(f"Путь не существует: {path_input}")
-                    print("Проверьте правильность пути и попробуйте снова")
+                    console.print(f"[red]Путь не существует:[/] {path_input}")
+                    console.print("[dim]Проверьте правильность пути и попробуйте снова[/]")
                     continue
-                
+
                 return os.path.abspath(path_input)
-                
-            except KeyboardInterrupt:
+
+            except (KeyboardInterrupt, EOFError):
                 return None
             except Exception as e:
-                print(f"Ошибка ввода: {e}")
+                console.print(f"[red]Ошибка ввода:[/] {e}")
                 continue
 
     def analyze_project(self, path: str) -> Dict:
@@ -93,9 +132,9 @@ class ProjectAnalyzer:
             'scan_time': 0,
             'error': None
         }
-        
+
         start_time = time.time()
-        
+
         try:
             if result['is_file']:
                 # Анализ одного файла
@@ -105,12 +144,12 @@ class ProjectAnalyzer:
                 result['tree_structure'] = self._build_tree_structure(path, path)
                 # Собираем статистику из дерева
                 self._collect_stats_from_tree(result)
-                
+
         except PermissionError as e:
             result['error'] = f"Нет доступа: {e}"
         except Exception as e:
             result['error'] = f"Ошибка анализа: {e}"
-        
+
         result['scan_time'] = time.time() - start_time
         return result
 
@@ -120,7 +159,7 @@ class ProjectAnalyzer:
             size = os.path.getsize(file_path)
             result['stats']['total_files'] = 1
             result['stats']['total_size'] = size
-            
+
             result['tree_structure'].append({
                 'name': os.path.basename(file_path),
                 'type': 'file',
@@ -135,42 +174,42 @@ class ProjectAnalyzer:
         """Рекурсивно строит структуру дерева"""
         if depth > max_depth:
             return []
-            
+
         items = []
-        
+
         try:
             with os.scandir(current_path) as entries:
                 # Сортируем: сначала папки, потом файлы, все по алфавиту
                 dirs = []
                 files = []
-                
+
                 for entry in entries:
                     # Пропускаем скрытые файлы и исключенные папки
-                    if (entry.name.startswith('.') or 
+                    if (entry.name.startswith('.') or
                         entry.name in self.exclude_dirs or
                         entry.name in self.exclude_files):
                         continue
-                    
+
                     if entry.is_dir():
                         dirs.append(entry)
                     else:
                         files.append(entry)
-                
+
                 # Сортируем
                 dirs.sort(key=lambda x: x.name.lower())
                 files.sort(key=lambda x: x.name.lower())
-                
+
                 # Обрабатываем папки
                 for entry in dirs:
                     try:
                         rel_path = os.path.relpath(entry.path, root_path)
                         children = self._build_tree_structure(root_path, entry.path, depth + 1, max_depth)
-                        
+
                         items.append({
                             'name': entry.name,
                             'type': 'dir',
                             'path': rel_path,
-                            'size': 0,
+                            'size': sum(child['size'] for child in children),
                             'children': children
                         })
                     except (PermissionError, OSError):
@@ -184,13 +223,13 @@ class ProjectAnalyzer:
                             'error': 'Нет доступа'
                         })
                         continue
-                
+
                 # Обрабатываем файлы
                 for entry in files:
                     try:
                         rel_path = os.path.relpath(entry.path, root_path)
                         size = entry.stat().st_size
-                        
+
                         items.append({
                             'name': entry.name,
                             'type': 'file',
@@ -209,11 +248,11 @@ class ProjectAnalyzer:
                             'error': 'Нет доступа'
                         })
                         continue
-                        
+
         except (PermissionError, OSError):
             # Нет доступа к текущей папке
             pass
-        
+
         return items
 
     def _collect_stats_from_tree(self, result: Dict):
@@ -227,146 +266,101 @@ class ProjectAnalyzer:
                     result['stats']['total_dirs'] += 1
                     # Рекурсивно обрабатываем детей
                     process_items(item['children'])
-        
+
         process_items(result['tree_structure'])
 
     def print_results(self, result: Dict):
         """Выводит результаты анализа"""
-        print("\n" + "="*60)
-        print("РЕЗУЛЬТАТЫ АНАЛИЗА")
-        print("="*60)
-        
         if result['error']:
-            print(f"Ошибка: {result['error']}")
+            console.print(f"[bold red]Ошибка:[/] {result['error']}")
             return
-        
-        print(f"Проект: {result['name']}")
-        print(f"Путь: {result['path']}")
-        print(f"Тип: {'Файл' if result['is_file'] else 'Папка'}")
-        
-        if result['scan_time'] > 0:
-            print(f"Время анализа: {result['scan_time']:.2f} сек")
-        
+
+        stats = result['stats']
+        info = Table.grid(padding=(0, 2))
+        info.add_column(style="dim")
+        info.add_column()
+        info.add_row("Путь", result['path'])
+        info.add_row("Тип", 'Файл' if result['is_file'] else 'Папка')
         if result['is_dir']:
-            stats = result['stats']
-            print(f"\nСТАТИСТИКА:")
-            print(f"  Папок: {stats['total_dirs']}")
-            print(f"  Файлов: {stats['total_files']}")
-            
-            # Размер
-            total_size = stats['total_size']
-            if total_size > 1024 * 1024 * 1024:  # GB
-                print(f"  Общий размер: {total_size / (1024*1024*1024):.2f} GB")
-            elif total_size > 1024 * 1024:  # MB
-                print(f"  Общий размер: {total_size / (1024*1024):.2f} MB")
-            elif total_size > 1024:  # KB
-                print(f"  Общий размер: {total_size / 1024:.2f} KB")
-            else:
-                print(f"  Общий размер: {total_size} байт")
-        
-        # Выводим полное дерево структуры
-        print(f"\nСТРУКТУРА ПРОЕКТА:")
-        print("-" * 60)
-        
-        if result['is_file']:
-            # Для одного файла
-            item = result['tree_structure'][0]
-            print(f"{item['name']}")
-        else:
-            # Для папки - выводим дерево
-            self._print_tree(result['tree_structure'])
-    
-    def _print_tree(self, items: List[Dict], prefix: str = ""):
-        """Рекурсивно выводит дерево структуры"""
-        for i, item in enumerate(items):
-            is_last = (i == len(items) - 1)
-            
-            # Определяем префиксы для дерева
-            if prefix == "":
-                # Корневой уровень
-                connector = "└── " if is_last else "├── "
-            else:
-                connector = "    " if prefix.endswith("    ") else "│   "
-            
+            info.add_row("Папок", f"[bold]{stats['total_dirs']}[/]")
+            info.add_row("Файлов", f"[bold]{stats['total_files']}[/]")
+        info.add_row("Размер", f"[bold green]{fmt_size(stats['total_size'])}[/]")
+        info.add_row("Время", f"{result['scan_time']:.2f} сек")
+
+        console.print()
+        console.print(Panel(info, title=f"[bold]{result['name']}[/]", border_style="cyan", expand=False))
+
+        root = Tree(f"📦 [bold]{result['name']}[/]", guide_style="bright_black")
+        self._to_rich_tree(result['tree_structure'], root)
+        console.print(root)
+
+    def _to_rich_tree(self, items: List[Dict], parent: Tree):
+        """Рекурсивно добавляет элементы в rich-дерево"""
+        for item in items:
+            label = Text()
             if item['type'] == 'dir':
-                # Папка
-                line = f"{prefix}{connector}{item['name']}/"
-                
-                if item.get('error'):
-                    line += f" [Нет доступа]"
-                
-                print(line)
-                
-                # Рекурсивно выводим содержимое папки
-                if item['children']:
-                    new_prefix = prefix + ("    " if is_last else "│   ")
-                    self._print_tree(item['children'], new_prefix)
-                    
+                label.append(f"📂 {item['name']}/", style="bold blue")
             else:
-                # Файл
-                line = f"{prefix}{connector}{item['name']}"
-                
-                if item.get('error'):
-                    line += f" [Нет доступа]"
-                
-                print(line)
+                icon, style = ICONS.get(os.path.splitext(item['name'])[1].lower(), DEFAULT_ICON)
+                label.append(f"{icon} {item['name']}", style=style)
+
+            if item.get('error'):
+                label.append("  [Нет доступа]", style="red")
+            else:
+                label.append(f"  {fmt_size(item['size'])}", style="dim")
+
+            branch = parent.add(label)
+            self._to_rich_tree(item['children'], branch)
 
     def run(self):
         """Основной цикл программы"""
-        print("\n" + "="*60)
-        print("АНАЛИЗАТОР СТРУКТУРЫ ПРОЕКТОВ")
-        print("="*60)
-        print("Показывает полную структуру проекта")
-        print("="*60)
-        
+        console.print(Panel(
+            "[bold]АНАЛИЗАТОР СТРУКТУРЫ ПРОЕКТОВ[/]\n[dim]Показывает полную структуру проекта[/]",
+            border_style="cyan", expand=False
+        ))
+
         while True:
             try:
                 # Получаем путь от пользователя
                 path = self.get_path()
-                
+
                 if path is None:
-                    print("\nВыход из программы")
+                    console.print("\n[dim]Выход из программы[/]")
                     break
-                
+
                 # Анализируем проект
-                print(f"\nАнализирую: {path}")
-                result = self.analyze_project(path)
-                
+                with console.status(f"[cyan]Сканирую[/] {path}…"):
+                    result = self.analyze_project(path)
+
                 # Выводим результаты
                 self.print_results(result)
-                
+
                 # Спрашиваем, хочет ли пользователь проанализировать еще
-                print("\n" + "="*60)
-                choice = input("\nПроанализировать другой проект? (y/n): ").lower().strip()
-                
-                if choice not in ['y', 'yes', 'да', 'д']:
-                    print("\nСпасибо за использование программы!")
+                console.print()
+                choice = Prompt.ask("Проанализировать другой проект? [cyan](y/n)[/]", default="n", show_default=False)
+                if choice.lower().strip() not in ['y', 'yes', 'да', 'д']:
+                    console.print("\n[bold cyan]Спасибо за использование программы![/]")
                     break
-                    
-                print("\n" + "="*60)
-                
-            except KeyboardInterrupt:
-                print("\n\nВыход из программы")
+
+                console.rule(style="bright_black")
+
+            except (KeyboardInterrupt, EOFError):
+                console.print("\n\n[dim]Выход из программы[/]")
                 break
             except Exception as e:
-                print(f"\nНеожиданная ошибка: {e}")
-                print("Попробуйте еще раз...")
+                console.print(f"\n[red]Неожиданная ошибка:[/] {e}")
+                console.print("[dim]Попробуйте еще раз...[/]")
                 continue
 
 def main():
     """Точка входа в программу"""
-    # Проверяем версию Python
-    if sys.version_info < (3, 6):
-        print("Требуется Python 3.6 или выше")
-        return
-    
     analyzer = ProjectAnalyzer()
-    
+
     # Запускаем анализатор
     try:
         analyzer.run()
     except Exception as e:
-        print(f"\nКритическая ошибка: {e}")
+        console.print(f"\n[bold red]Критическая ошибка:[/] {e}")
         input("Нажмите Enter для выхода...")
 
 if __name__ == "__main__":

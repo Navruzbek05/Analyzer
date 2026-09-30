@@ -1,64 +1,62 @@
-# Анализатор структуры проекта
+# Project Tree Analyzer
 
-Интерактивная программа для анализа структуры папок и файлов проектов с выводом дерева структуры и статистики.
+**English** | [Русский](README.ru.md)
 
-## 🚀 Возможности
+[![tests](https://github.com/Navruzbek05/project-tree-analyzer/actions/workflows/test.yml/badge.svg)](https://github.com/Navruzbek05/project-tree-analyzer/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
 
-- 📁 **Анализ структуры** — показывает полное дерево папок и файлов проекта
-- 📊 **Статистика проекта**:
-  - Количество папок и файлов
-  - Общий размер проекта (автоматическое преобразование в Б, КБ, МБ, ГБ)
-  - Время сканирования
-- 🌳 **Красивый вывод** — цветное дерево на [rich](https://github.com/Textualize/rich) с иконками по типу файла
-- 📏 **Размеры в дереве** — размер каждого файла и суммарный размер каждой папки
-- ⚡ **Быстрый анализ** — оптимизировано для больших проектов
-- 🛡️ **Умная фильтрация** — исключает ненужные папки (`.git`, `node_modules`, etc.)
-- 🔍 **Анализ отдельных файлов** — поддерживает анализ одного файла
+An interactive terminal tool that shows your project's folder structure as a colorful tree with file sizes, icons and stats.
 
-## 📋 Требования
+![Demo](docs/demo.gif)
 
-- Python 3.8 или выше
-- Библиотека [rich](https://pypi.org/project/rich/)
+> The program's interface is currently in Russian. The prompts are simple: enter a path, then answer `y`/`n`.
 
-## 💾 Установка
+## Features
 
-1. Клонируйте репозиторий или скачайте файл `arch_analyzer.py`
-2. Установите зависимости:
+- 📁 **Full project tree** of folders and files
+- 📏 **Sizes in the tree**: every file's size and the total size of every folder
+- 🌳 **Colorful output** powered by [rich](https://github.com/Textualize/rich), with icons and colors by file type
+- 📊 **Stats panel**: number of folders and files, total size, scan time
+- 🛡️ **Smart filtering**: skips hidden items and noise like `.git`, `node_modules`, `__pycache__`, `venv`, `build`, `dist`
+- 🔍 Works on a single file too
+- ✅ Windows, macOS and Linux (tested in CI)
+
+## Requirements
+
+- Python 3.9+
+- [rich](https://pypi.org/project/rich/)
+
+## Installation
 
 ```bash
+git clone https://github.com/Navruzbek05/project-tree-analyzer.git
+cd project-tree-analyzer
 pip install -r requirements.txt
 ```
 
-Если rich не установлен, программа сообщит об этом и завершится.
+Or download an archive from [Releases](https://github.com/Navruzbek05/project-tree-analyzer/releases).
 
-## 🎯 Использование
-
-### Запуск программы
+## Usage
 
 ```bash
 python arch_analyzer.py
 ```
 
-или
+When asked for a path, enter one of:
 
-```bash
-python3 arch_analyzer.py
-```
+| Input | Meaning |
+|-------|---------|
+| `C:\Users\Name\Projects\myapp` | Full path to a project |
+| `.` | Current folder |
+| `..` | Parent folder |
+| `~/Documents/project` | Relative to your home folder |
+| `%USERPROFILE%\Desktop` | With environment variables |
+| `exit` / `quit` | Quit |
 
-### Примеры ввода пути
+After the result, the program asks whether to analyze another project (`y`/`n`). `Ctrl+C` quits at any time.
 
-При запросе программы введите один из вариантов:
-
-| Вариант | Описание |
-|---------|---------|
-| `C:\Users\Name\Projects\myapp` | Полный путь к проекту |
-| `.` | Текущая папка |
-| `..` | Папка выше текущей |
-| `~/Documents/project` | Относительно домашней папки |
-| `%USERPROFILE%\Desktop` | С переменными окружения |
-| `exit` / `quit` / `выход` | Выход из программы |
-
-## 📈 Пример вывода
+## Example output
 
 ```
 ╭──────────────── myapp ─────────────────╮
@@ -85,79 +83,24 @@ python3 arch_analyzer.py
 └── 📝 README.md  4.0 KB
 ```
 
-В терминале вывод цветной: папки синие, файлы окрашены по типу, размеры приглушены.
+(Путь = path, Тип = type, Папок = folders, Файлов = files, Размер = size, Время = time.)
 
-## 🔧 Исключаемые папки и файлы
+## Excluded items
 
-По умолчанию анализатор пропускает следующие папки:
-- `.git` — репозиторий Git
-- `__pycache__` — кеш Python
-- `.venv`, `venv` — виртуальные окружения
-- `node_modules` — зависимости Node.js
-- `.idea` — конфиг IDE JetBrains
-- `.vscode` — конфиг VS Code
-- `build`, `dist` — скомпилированные файлы
-- `.pytest_cache`, `.coverage`, `.mypy_cache` — служебные папки
+Hidden items (names starting with `.`) are skipped, plus these folders: `__pycache__`, `venv`, `node_modules`, `build`, `dist`,
+and these files: `Thumbs.db`, `desktop.ini`. The lists live at the top of `ProjectAnalyzer.__init__` in
+[arch_analyzer.py](arch_analyzer.py), so you can edit them there.
 
-И файлы:
-- `.gitignore`, `.gitattributes`
-- `.DS_Store` — система файлов macOS
-- `Thumbs.db`, `desktop.ini` — система файлов Windows
+Scanning goes up to 10 levels deep. Items without access are marked `[Нет доступа]` (no access).
 
-## 📝 Структура кода
-
-### Класс `ProjectAnalyzer`
-
-Основной класс программы с методами:
-
-| Метод | Описание |
-|-------|---------|
-| `get_path()` | Получает и валидирует путь от пользователя |
-| `analyze_project(path)` | Анализирует проект и собирает статистику |
-| `_build_tree_structure()` | Рекурсивно строит дерево структуры |
-| `_collect_stats_from_tree()` | Собирает статистику из дерева |
-| `print_results()` | Красиво выводит результаты в консоль |
-| `_to_rich_tree()` | Строит цветное rich-дерево с иконками и размерами |
-| `run()` | Основной цикл программы |
-
-Вспомогательная функция `fmt_size(size)` переводит байты в Б / KB / MB / GB.
-
-### Проверка
+## Development
 
 ```bash
 python test_arch_analyzer.py
 ```
 
-## 🎨 Особенности
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) and the [CHANGELOG](CHANGELOG.md).
 
-- ✅ Поддержка Windows, macOS и Linux
-- ✅ Обработка ошибок доступа (PermissionError)
-- ✅ Защита от бесконечной рекурсии (максимальная глубина 10 уровней)
-- ✅ Интерактивный режим — анализируйте несколько проектов подряд
-- ✅ Правильное отображение размеров файлов в подходящих единицах
+## License
 
-## 🚨 Обработка ошибок
-
-- Если путь не существует — программа попросит ввести другой
-- При отсутствии доступа к папке — она отметится как `[Нет доступа]`
-- При критических ошибках — выведет сообщение об ошибке
-
-## 💡 Советы использования
-
-1. **Для текущей папки**: просто введите `.`
-2. **Для родительской папки**: введите `..`
-3. **Повторный анализ**: программа автоматически спрашивает, анализировать ли еще один проект
-4. **Выход**: нажмите `Ctrl+C` или введите `exit`
-
-## 📄 Лицензия
-
-Свободное использование для личных и коммерческих целей.
-
-## 👨‍💻 Автор
-
-Анализатор структуры проекта — простой и удобный инструмент для изучения архитектуры проектов.
-
----
-
-**Версия**: 2.0  
-**Дата обновления**: Октябрь 2026
+[MIT](LICENSE) © 2026 Navruzbek

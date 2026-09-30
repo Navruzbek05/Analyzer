@@ -1,0 +1,37 @@
+name: Bug report / Сообщить об ошибке
+description: Something works wrong / Что-то работает неправильно
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened? / Что случилось?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / Как воспроизвести
+      placeholder: |
+        1. python arch_analyzer.py
+        2. Enter path ...
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS / ОС
+      placeholder: Windows 11, macOS 15, Ubuntu 24.04 ...
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version / Версия Python
+      placeholder: python --version
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output or screenshot / Вывод или скриншот
